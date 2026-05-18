@@ -15,11 +15,18 @@ class _StudentHistoryViewState extends State<StudentHistoryView> {
   @override
   void initState() {
     super.initState();
-    _historyFuture = Supabase.instance.client
-        .from('study_sessions')
-        .select()
-        .eq('username', widget.username)
-        .order('created_at', ascending: false);
+    _refreshHistoryLogs();
+  }
+
+  // REFRESH ENGINE METHOD
+  void _refreshHistoryLogs() {
+    setState(() {
+      _historyFuture = Supabase.instance.client
+          .from('study_sessions')
+          .select()
+          .eq('username', widget.username)
+          .order('created_at', ascending: false);
+    });
   }
 
   @override
@@ -29,9 +36,21 @@ class _StudentHistoryViewState extends State<StudentHistoryView> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Your Past Study Sessions',
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF194678)),
+          // HEADER ROW
+          Row(
+            // 🟢 FIXED: Capitalized B to match standard Flutter layouts correctly
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Your Past Study Sessions',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF194678)),
+              ),
+              IconButton(
+                icon: const Icon(Icons.refresh, color: Color(0xFF6495ED)),
+                tooltip: 'Refresh History Logs',
+                onPressed: _refreshHistoryLogs,
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           Expanded(
@@ -47,7 +66,12 @@ class _StudentHistoryViewState extends State<StudentHistoryView> {
 
                 final logs = snapshot.data ?? [];
                 if (logs.isEmpty) {
-                  return const Center(child: Text('No tracking history found yet.'));
+                  return const Center(
+                    child: Text(
+                      'No tracking history found yet.',
+                      style: TextStyle(color: Colors.grey, fontSize: 16),
+                    ),
+                  );
                 }
 
                 return ListView.builder(
@@ -57,6 +81,11 @@ class _StudentHistoryViewState extends State<StudentHistoryView> {
                     final bool isSuccess = log['status'] == 'study sesh success';
                     final durationMins = (log['duration_used'] ?? 0) ~/ 60;
                     final durationSecs = (log['duration_used'] ?? 0) % 60;
+
+                    final String rawDate = log['created_at'] ?? '';
+                    final String formattedDate = rawDate.length >= 10
+                        ? rawDate.substring(0, 10)
+                        : 'Recent';
 
                     return Card(
                       margin: const EdgeInsets.symmetric(vertical: 6),
@@ -72,7 +101,7 @@ class _StudentHistoryViewState extends State<StudentHistoryView> {
                           isSuccess ? 'Completed Focus Session' : 'Incomplete Session',
                           style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
-                        subtitle: Text('Logged: ${log['created_at'].toString().substring(0, 10)}'),
+                        subtitle: Text('Logged: $formattedDate'),
                         trailing: Text(
                           '${durationMins}m ${durationSecs}s',
                           style: TextStyle(
